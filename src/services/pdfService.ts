@@ -5,7 +5,7 @@ import { formatCurrency } from '../utils/calculations';
 import dayjs from 'dayjs';
 
 // Set up fonts for pdfMake
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+pdfMake.vfs = pdfFonts;
 
 export class PDFService {
   static generateInvoicePDF(invoice: Invoice): void {
