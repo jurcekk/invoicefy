@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore';
 import { useAuth } from '../auth/AuthProvider';
 import { FreelancerInfo } from '../../types';
@@ -25,6 +25,9 @@ export const Settings: React.FC = () => {
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isFormLoading, setIsFormLoading] = useState(true);
+  
+  // Track the current user to detect user changes
+  const previousUserRef = useRef<string | null>(null);
 
   // Load freelancer data into form when component mounts or freelancer changes
   useEffect(() => {
@@ -50,10 +53,14 @@ export const Settings: React.FC = () => {
     }
   }, [freelancer]);
 
-  // Reset form when user changes (this is the key fix)
+  // Handle user switching (different from initial load)
   useEffect(() => {
-    if (user) {
-      // When user changes, reset form and wait for new freelancer data
+    const currentUserId = user?.id || null;
+    const previousUserId = previousUserRef.current;
+    
+    // Only reset if this is a user switch (not initial load)
+    if (previousUserId && previousUserId !== currentUserId) {
+      // User has changed - reset form and clear states
       setIsFormLoading(true);
       setFormData({
         name: '',
@@ -64,23 +71,11 @@ export const Settings: React.FC = () => {
       });
       setShowSuccess(false);
       clearError();
-      
-      // If freelancer data is available, load it
-      if (freelancer) {
-        setFormData({
-          name: freelancer.name || '',
-          email: freelancer.email || '',
-          address: freelancer.address || '',
-          phone: freelancer.phone || '',
-          website: freelancer.website || '',
-        });
-        setIsFormLoading(false);
-      } else {
-        // No freelancer data yet, show empty form
-        setIsFormLoading(false);
-      }
     }
-  }, [user, freelancer, clearError]);
+    
+    // Update the ref to track current user
+    previousUserRef.current = currentUserId;
+  }, [user?.id, clearError]);
 
   // Clear errors when component mounts
   useEffect(() => {
