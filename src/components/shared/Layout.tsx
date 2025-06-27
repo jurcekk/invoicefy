@@ -89,7 +89,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-gray-900">InvoicePro</h1>
+                <h1 className="text-xl font-bold text-gray-900">Invoicefy</h1>
               </div>
               {freelancer && (
                 <span className="text-sm text-gray-600">Welcome, {freelancer.name}</span>
