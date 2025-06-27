@@ -141,18 +141,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToSignUp }) => {
               <ArrowRight className="w-4 h-4 ml-1" />
             </button>
           </div>
-
-          {/* Demo Account Info */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Account</h3>
-            <p className="text-xs text-gray-600 mb-2">
-              Try the app with these demo credentials:
-            </p>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div><strong>Email:</strong> demo@invoicepro.com</div>
-              <div><strong>Password:</strong> demo123</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
