@@ -3,7 +3,7 @@ import { useStore } from '../../store/useStore';
 import { Invoice } from '../../types';
 import { formatCurrency } from '../../utils/calculations';
 import { PDFService } from '../../services/pdfService';
-import { FileText, Download, Edit, Trash2, Search, AlertCircle, Loader } from 'lucide-react';
+import { FileText, Download, Edit, Trash2, Search, AlertCircle, Loader, Eye } from 'lucide-react';
 import dayjs from 'dayjs';
 
 export const InvoiceList: React.FC = () => {
@@ -18,6 +18,7 @@ export const InvoiceList: React.FC = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
 
   // Clear errors when component mounts
   useEffect(() => {
@@ -34,8 +35,26 @@ export const InvoiceList: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDownloadPDF = (invoice: Invoice) => {
-    PDFService.generateInvoicePDF(invoice);
+  const handleDownloadPDF = async (invoice: Invoice) => {
+    try {
+      setDownloadingInvoice(invoice.id);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for UX
+      PDFService.generateInvoicePDF(invoice);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Error downloading PDF. Please try again.');
+    } finally {
+      setDownloadingInvoice(null);
+    }
+  };
+
+  const handlePreviewPDF = async (invoice: Invoice) => {
+    try {
+      PDFService.previewInvoicePDF(invoice);
+    } catch (error) {
+      console.error('Error previewing PDF:', error);
+      alert('Error previewing PDF. Please try again.');
+    }
   };
 
   const handleStatusChange = async (invoiceId: string, newStatus: Invoice['status']) => {
@@ -189,11 +208,24 @@ export const InvoiceList: React.FC = () => {
                         </select>
                         
                         <button
+                          onClick={() => handlePreviewPDF(invoice)}
+                          className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                          title="Preview PDF"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        
+                        <button
                           onClick={() => handleDownloadPDF(invoice)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          disabled={downloadingInvoice === invoice.id}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
                           title="Download PDF"
                         >
-                          <Download className="w-4 h-4" />
+                          {downloadingInvoice === invoice.id ? (
+                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
                         </button>
                         
                         <button

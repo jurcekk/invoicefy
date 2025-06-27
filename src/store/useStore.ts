@@ -40,6 +40,9 @@ interface AppState extends AppStore {
   clearError: () => void;
   clearClientError: () => void;
   clearInvoiceError: () => void;
+  
+  // Clear all data (for sign out)
+  clearAllData: () => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -62,6 +65,24 @@ export const useStore = create<AppState>((set, get) => ({
   
   // Initialization
   isInitialized: false,
+
+  // Clear all data (for sign out)
+  clearAllData: () => {
+    set({
+      freelancer: null,
+      clients: [],
+      invoices: [],
+      invoiceCounter: 1,
+      activeTab: 'invoices',
+      isLoading: false,
+      isLoadingClients: false,
+      isLoadingInvoices: false,
+      error: null,
+      clientError: null,
+      invoiceError: null,
+      isInitialized: false
+    });
+  },
 
   // Initialize app - load freelancer data for current user
   initializeApp: async () => {
