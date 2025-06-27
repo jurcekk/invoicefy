@@ -10,7 +10,8 @@ export const Settings: React.FC = () => {
     setFreelancer, 
     isLoading, 
     error, 
-    clearError 
+    clearError,
+    isInitialized 
   } = useStore();
   
   const { user } = useAuth();
@@ -29,7 +30,7 @@ export const Settings: React.FC = () => {
   // Track the current user to detect user changes
   const previousUserRef = useRef<string | null>(null);
 
-  // Load freelancer data into form when component mounts or freelancer changes
+  // Load freelancer data into form when freelancer data changes
   useEffect(() => {
     if (freelancer) {
       setFormData({
@@ -40,8 +41,8 @@ export const Settings: React.FC = () => {
         website: freelancer.website || '',
       });
       setIsFormLoading(false);
-    } else {
-      // If no freelancer data, still show empty form
+    } else if (isInitialized) {
+      // App is initialized but no freelancer data - show empty form
       setFormData({
         name: '',
         email: '',
@@ -51,7 +52,7 @@ export const Settings: React.FC = () => {
       });
       setIsFormLoading(false);
     }
-  }, [freelancer]);
+  }, [freelancer, isInitialized]);
 
   // Handle user switching (different from initial load)
   useEffect(() => {
@@ -115,14 +116,16 @@ export const Settings: React.FC = () => {
     }
   };
 
-  // Show loading state while form data is being loaded
-  if (isFormLoading) {
+  // Show loading state while app is initializing or form data is being loaded
+  if (!isInitialized || isFormLoading) {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <Loader className="w-8 h-8 text-blue-600 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading your profile...</p>
+          <p className="text-gray-600">
+            {!isInitialized ? 'Loading your profile...' : 'Setting up form...'}
+          </p>
         </div>
       </div>
     );
