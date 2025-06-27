@@ -5,7 +5,7 @@ import { formatCurrency } from '../utils/calculations';
 import dayjs from 'dayjs';
 
 // Set up fonts for pdfMake
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+pdfMake.vfs = pdfFonts;
 
 // Define font families
 pdfMake.fonts = {
