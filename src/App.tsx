@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { useStore } from './store/useStore';
+import { useAuth, AuthProvider } from './components/auth/AuthProvider';
+import { AuthForm } from './components/auth/AuthForm';
 import { Layout } from './components/shared/Layout';
 import { InvoicesPage } from './pages/InvoicesPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { Settings } from './components/settings/Settings';
 import { Loader, AlertCircle } from 'lucide-react';
 
-function App() {
+function AppContent() {
   const { 
     activeTab, 
     isInitialized, 
@@ -15,13 +17,15 @@ function App() {
     initializeApp, 
     clearError 
   } = useStore();
+  
+  const { user, loading: authLoading } = useAuth();
 
-  // Initialize app on mount
+  // Initialize app when user is authenticated
   useEffect(() => {
-    if (!isInitialized) {
+    if (user && !isInitialized) {
       initializeApp();
     }
-  }, [isInitialized, initializeApp]);
+  }, [user, isInitialized, initializeApp]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -36,7 +40,25 @@ function App() {
     }
   };
 
-  // Show loading screen during initialization
+  // Show loading screen during auth check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth form if not authenticated
+  if (!user) {
+    return <AuthForm />;
+  }
+
+  // Show loading screen during app initialization
   if (!isInitialized || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
@@ -75,6 +97,14 @@ function App() {
     <Layout>
       {renderContent()}
     </Layout>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

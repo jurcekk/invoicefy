@@ -3,7 +3,8 @@ import { AppStore, FreelancerInfo, Client, Invoice } from '../types';
 import { 
   createFreelancer, 
   getFreelancerById, 
-  updateFreelancer 
+  updateFreelancer,
+  getAllFreelancers
 } from '../services/freelancerService';
 import { 
   createClient, 
@@ -18,6 +19,7 @@ import {
   deleteInvoice as deleteInvoiceService,
   getNextInvoiceNumber 
 } from '../services/invoiceService';
+import { supabase } from '../lib/supabaseClient';
 
 interface AppState extends AppStore {
   // Loading states
@@ -61,33 +63,48 @@ export const useStore = create<AppState>((set, get) => ({
   // Initialization
   isInitialized: false,
 
-  // Initialize app - load freelancer data if exists
+  // Initialize app - load freelancer data for current user
   initializeApp: async () => {
     set({ isLoading: true, error: null });
     
     try {
-      // For now, we'll use a hardcoded freelancer ID
-      // In a real app, this would come from authentication
-      const freelancerId = localStorage.getItem('current_freelancer_id');
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (freelancerId) {
-        const { data: freelancer, error } = await getFreelancerById(freelancerId);
+      if (!user) {
+        set({ error: 'No authenticated user found', isLoading: false, isInitialized: true });
+        return;
+      }
+
+      // Try to find existing freelancer for this user
+      const { data: freelancers, error: freelancersError } = await getAllFreelancers();
+      
+      if (freelancersError) {
+        console.error('Error loading freelancers:', freelancersError);
+        set({ error: freelancersError, isLoading: false, isInitialized: true });
+        return;
+      }
+      
+      // Find freelancer for current user (check both user_id and id for legacy support)
+      const userFreelancer = freelancers?.find(f => f.user_id === user.id || f.id === user.id);
+      
+      if (userFreelancer) {
+        const transformedFreelancer: FreelancerInfo = {
+          id: userFreelancer.id,
+          name: userFreelancer.name,
+          email: userFreelancer.email,
+          address: userFreelancer.address,
+          phone: userFreelancer.phone || undefined,
+          website: userFreelancer.website || undefined
+        };
         
-        if (error) {
-          console.error('Error loading freelancer:', error);
-          set({ error, isLoading: false, isInitialized: true });
-          return;
-        }
+        set({ freelancer: transformedFreelancer });
         
-        if (freelancer) {
-          set({ freelancer });
-          
-          // Load clients and invoices for this freelancer
-          await Promise.all([
-            get().loadClients(freelancerId),
-            get().loadInvoices(freelancerId)
-          ]);
-        }
+        // Load clients and invoices for this freelancer
+        await Promise.all([
+          get().loadClients(userFreelancer.id),
+          get().loadInvoices(userFreelancer.id)
+        ]);
       }
       
       set({ isLoading: false, isInitialized: true });
@@ -254,9 +271,6 @@ export const useStore = create<AppState>((set, get) => ({
             phone: newFreelancer.phone || undefined,
             website: newFreelancer.website || undefined
           };
-          
-          // Store freelancer ID for future sessions
-          localStorage.setItem('current_freelancer_id', newFreelancer.id);
           
           set({ freelancer: transformedFreelancer, isLoading: false });
         }
