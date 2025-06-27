@@ -14,7 +14,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     setActiveTab, 
     freelancer, 
     initializeApp,
-    isInitialized 
+    isInitialized,
+    clearAllData
   } = useStore();
   
   const { user, signOut } = useAuth();
@@ -71,6 +72,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const handleSignOut = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
+      // Clear all data from store before signing out
+      clearAllData();
       await signOut();
     }
   };

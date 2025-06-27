@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
+import { useAuth } from '../auth/AuthProvider';
 import { FreelancerInfo } from '../../types';
 import { Save, User, AlertCircle, Loader } from 'lucide-react';
 
@@ -11,6 +12,8 @@ export const Settings: React.FC = () => {
     error, 
     clearError 
   } = useStore();
+  
+  const { user } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -46,6 +49,38 @@ export const Settings: React.FC = () => {
       setIsFormLoading(false);
     }
   }, [freelancer]);
+
+  // Reset form when user changes (this is the key fix)
+  useEffect(() => {
+    if (user) {
+      // When user changes, reset form and wait for new freelancer data
+      setIsFormLoading(true);
+      setFormData({
+        name: '',
+        email: '',
+        address: '',
+        phone: '',
+        website: '',
+      });
+      setShowSuccess(false);
+      clearError();
+      
+      // If freelancer data is available, load it
+      if (freelancer) {
+        setFormData({
+          name: freelancer.name || '',
+          email: freelancer.email || '',
+          address: freelancer.address || '',
+          phone: freelancer.phone || '',
+          website: freelancer.website || '',
+        });
+        setIsFormLoading(false);
+      } else {
+        // No freelancer data yet, show empty form
+        setIsFormLoading(false);
+      }
+    }
+  }, [user, freelancer, clearError]);
 
   // Clear errors when component mounts
   useEffect(() => {
