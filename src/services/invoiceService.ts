@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { getSession } from './authService';
 import type { Database } from '../lib/database.types';
 
 // Type definitions for better TypeScript support
@@ -53,6 +54,17 @@ export interface CreateInvoiceItemInput {
  */
 export async function getNextInvoiceNumber(freelancer_id: string): Promise<ServiceResponse<string>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(freelancer_id)) {
@@ -66,7 +78,8 @@ export async function getNextInvoiceNumber(freelancer_id: string): Promise<Servi
     const { count, error } = await supabase
       .from('invoices')
       .select('*', { count: 'exact', head: true })
-      .eq('freelancer_id', freelancer_id);
+      .eq('freelancer_id', freelancer_id)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error counting invoices:', error);
@@ -104,6 +117,17 @@ export async function createInvoice(
   items: CreateInvoiceItemInput[]
 ): Promise<ServiceResponse<InvoiceWithItems>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Auto-generate invoice number if not provided
     let invoiceNumber = invoice.invoice_number;
     if (!invoiceNumber) {
@@ -133,7 +157,7 @@ export async function createInvoice(
     }
 
     // Verify relationships exist
-    const relationshipError = await validateInvoiceRelationships(invoiceWithNumber);
+    const relationshipError = await validateInvoiceRelationships(invoiceWithNumber, userId);
     if (relationshipError) {
       return {
         data: null,
@@ -156,6 +180,7 @@ export async function createInvoice(
         total: invoiceWithNumber.total,
         status: invoiceWithNumber.status || 'draft',
         notes: invoiceWithNumber.notes || null,
+        user_id: userId,
       })
       .select()
       .single();
@@ -205,7 +230,8 @@ export async function createInvoice(
       await supabase
         .from('invoices')
         .delete()
-        .eq('id', createdInvoice.id);
+        .eq('id', createdInvoice.id)
+        .eq('user_id', userId);
       
       return {
         data: null,
@@ -243,6 +269,17 @@ export async function getInvoicesForFreelancer(
   includeRelations: boolean = false
 ): Promise<ServiceResponse<InvoiceRow[] | InvoiceWithRelations[]>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(freelancer_id)) {
@@ -261,6 +298,7 @@ export async function getInvoicesForFreelancer(
         items:invoice_items(*)
       ` : '*')
       .eq('freelancer_id', freelancer_id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     const { data, error } = await query;
@@ -293,6 +331,17 @@ export async function getInvoicesForFreelancer(
  */
 export async function getInvoiceWithItems(invoice_id: string): Promise<ServiceResponse<InvoiceWithRelations>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(invoice_id)) {
@@ -311,6 +360,7 @@ export async function getInvoiceWithItems(invoice_id: string): Promise<ServiceRe
         items:invoice_items(*)
       `)
       .eq('id', invoice_id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -350,9 +400,20 @@ export async function getInvoiceWithItems(invoice_id: string): Promise<ServiceRe
  */
 export async function updateInvoice(
   invoice_id: string,
-  updates: Partial<Omit<InvoiceInsert, 'id' | 'created_at' | 'updated_at'>>
+  updates: Partial<Omit<InvoiceInsert, 'id' | 'created_at' | 'updated_at' | 'user_id'>>
 ): Promise<ServiceResponse<InvoiceRow>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(invoice_id)) {
@@ -389,6 +450,7 @@ export async function updateInvoice(
       .from('invoices')
       .update(updates)
       .eq('id', invoice_id)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -435,6 +497,17 @@ export async function updateInvoice(
  */
 export async function deleteInvoice(invoice_id: string): Promise<ServiceResponse<boolean>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(invoice_id)) {
@@ -448,7 +521,8 @@ export async function deleteInvoice(invoice_id: string): Promise<ServiceResponse
     const { error } = await supabase
       .from('invoices')
       .delete()
-      .eq('id', invoice_id);
+      .eq('id', invoice_id)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error deleting invoice:', error);
@@ -484,6 +558,17 @@ export async function getInvoiceStats(freelancer_id: string): Promise<ServiceRes
   overdue_amount: number;
 }>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(freelancer_id)) {
@@ -496,7 +581,8 @@ export async function getInvoiceStats(freelancer_id: string): Promise<ServiceRes
     const { data, error } = await supabase
       .from('invoices')
       .select('total, status')
-      .eq('freelancer_id', freelancer_id);
+      .eq('freelancer_id', freelancer_id)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error fetching invoice stats:', error);
@@ -592,17 +678,18 @@ function validateInvoiceInput(invoice: CreateInvoiceInput & { invoice_number: st
 /**
  * Validates that freelancer and client exist and are related
  */
-async function validateInvoiceRelationships(invoice: CreateInvoiceInput & { invoice_number: string }): Promise<string | null> {
+async function validateInvoiceRelationships(invoice: CreateInvoiceInput & { invoice_number: string }, userId: string): Promise<string | null> {
   try {
-    // Check if freelancer exists
+    // Check if freelancer exists and belongs to user
     const { data: freelancer, error: freelancerError } = await supabase
       .from('freelancers')
       .select('id')
       .eq('id', invoice.freelancer_id)
+      .eq('user_id', userId)
       .single();
 
     if (freelancerError || !freelancer) {
-      return 'Freelancer not found';
+      return 'Freelancer not found or access denied';
     }
 
     // Check if client exists and belongs to the freelancer
@@ -610,10 +697,11 @@ async function validateInvoiceRelationships(invoice: CreateInvoiceInput & { invo
       .from('clients')
       .select('id, freelancer_id')
       .eq('id', invoice.client_id)
+      .eq('user_id', userId)
       .single();
 
     if (clientError || !client) {
-      return 'Client not found';
+      return 'Client not found or access denied';
     }
 
     if (client.freelancer_id !== invoice.freelancer_id) {
