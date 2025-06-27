@@ -64,7 +64,7 @@ function AppContent() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <Loader className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading InvoicePro</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Invoicefy</h2>
           <p className="text-gray-600">Setting up your workspace...</p>
         </div>
       </div>
