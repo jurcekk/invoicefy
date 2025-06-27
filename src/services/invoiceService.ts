@@ -28,7 +28,7 @@ export interface InvoiceWithRelations extends InvoiceRow {
 export interface CreateInvoiceInput {
   freelancer_id: string;
   client_id: string;
-  invoice_number: string;
+  invoice_number?: string; // Now optional - will be auto-generated if not provided
   date_issued: string; // YYYY-MM-DD format
   due_date: string; // YYYY-MM-DD format
   subtotal: number;
@@ -47,8 +47,55 @@ export interface CreateInvoiceItemInput {
 }
 
 /**
+ * Gets the next invoice number for a freelancer
+ * @param freelancer_id - The UUID of the freelancer
+ * @returns Promise with formatted invoice number and error
+ */
+export async function getNextInvoiceNumber(freelancer_id: string): Promise<ServiceResponse<string>> {
+  try {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(freelancer_id)) {
+      return {
+        data: null,
+        error: 'Invalid freelancer ID format'
+      };
+    }
+
+    // Get count of existing invoices for this freelancer
+    const { count, error } = await supabase
+      .from('invoices')
+      .select('*', { count: 'exact', head: true })
+      .eq('freelancer_id', freelancer_id);
+
+    if (error) {
+      console.error('Error counting invoices:', error);
+      return {
+        data: null,
+        error: error.message || 'Failed to count existing invoices'
+      };
+    }
+
+    // Generate next invoice number (count + 1, padded to 3 digits)
+    const nextNumber = (count || 0) + 1;
+    const invoiceNumber = `INV-${nextNumber.toString().padStart(3, '0')}`;
+
+    return {
+      data: invoiceNumber,
+      error: null
+    };
+  } catch (err) {
+    console.error('Unexpected error generating invoice number:', err);
+    return {
+      data: null,
+      error: 'An unexpected error occurred while generating invoice number'
+    };
+  }
+}
+
+/**
  * Creates a new invoice with associated items in a transaction
- * @param invoice - Invoice data
+ * @param invoice - Invoice data (invoice_number is optional and will be auto-generated)
  * @param items - Array of invoice items
  * @returns Promise with created invoice and error
  */
@@ -57,8 +104,27 @@ export async function createInvoice(
   items: CreateInvoiceItemInput[]
 ): Promise<ServiceResponse<InvoiceWithItems>> {
   try {
+    // Auto-generate invoice number if not provided
+    let invoiceNumber = invoice.invoice_number;
+    if (!invoiceNumber) {
+      const { data: generatedNumber, error: numberError } = await getNextInvoiceNumber(invoice.freelancer_id);
+      if (numberError || !generatedNumber) {
+        return {
+          data: null,
+          error: numberError || 'Failed to generate invoice number'
+        };
+      }
+      invoiceNumber = generatedNumber;
+    }
+
+    // Create invoice object with generated number
+    const invoiceWithNumber = {
+      ...invoice,
+      invoice_number: invoiceNumber
+    };
+
     // Validate input shapes
-    const validationError = validateInvoiceInput(invoice, items);
+    const validationError = validateInvoiceInput(invoiceWithNumber, items);
     if (validationError) {
       return {
         data: null,
@@ -67,7 +133,7 @@ export async function createInvoice(
     }
 
     // Verify relationships exist
-    const relationshipError = await validateInvoiceRelationships(invoice);
+    const relationshipError = await validateInvoiceRelationships(invoiceWithNumber);
     if (relationshipError) {
       return {
         data: null,
@@ -79,17 +145,17 @@ export async function createInvoice(
     const { data: createdInvoice, error: invoiceError } = await supabase
       .from('invoices')
       .insert({
-        freelancer_id: invoice.freelancer_id,
-        client_id: invoice.client_id,
-        invoice_number: invoice.invoice_number,
-        date_issued: invoice.date_issued,
-        due_date: invoice.due_date,
-        subtotal: invoice.subtotal,
-        tax_rate: invoice.tax_rate,
-        tax_amount: invoice.tax_amount,
-        total: invoice.total,
-        status: invoice.status || 'draft',
-        notes: invoice.notes || null,
+        freelancer_id: invoiceWithNumber.freelancer_id,
+        client_id: invoiceWithNumber.client_id,
+        invoice_number: invoiceWithNumber.invoice_number,
+        date_issued: invoiceWithNumber.date_issued,
+        due_date: invoiceWithNumber.due_date,
+        subtotal: invoiceWithNumber.subtotal,
+        tax_rate: invoiceWithNumber.tax_rate,
+        tax_amount: invoiceWithNumber.tax_amount,
+        total: invoiceWithNumber.total,
+        status: invoiceWithNumber.status || 'draft',
+        notes: invoiceWithNumber.notes || null,
       })
       .select()
       .single();
@@ -466,7 +532,7 @@ export async function getInvoiceStats(freelancer_id: string): Promise<ServiceRes
 /**
  * Validates invoice input data
  */
-function validateInvoiceInput(invoice: CreateInvoiceInput, items: CreateInvoiceItemInput[]): string | null {
+function validateInvoiceInput(invoice: CreateInvoiceInput & { invoice_number: string }, items: CreateInvoiceItemInput[]): string | null {
   // Validate required fields
   if (!invoice.freelancer_id || !invoice.client_id || !invoice.invoice_number) {
     return 'Missing required fields: freelancer_id, client_id, or invoice_number';
@@ -526,7 +592,7 @@ function validateInvoiceInput(invoice: CreateInvoiceInput, items: CreateInvoiceI
 /**
  * Validates that freelancer and client exist and are related
  */
-async function validateInvoiceRelationships(invoice: CreateInvoiceInput): Promise<string | null> {
+async function validateInvoiceRelationships(invoice: CreateInvoiceInput & { invoice_number: string }): Promise<string | null> {
   try {
     // Check if freelancer exists
     const { data: freelancer, error: freelancerError } = await supabase
