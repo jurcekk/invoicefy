@@ -5,11 +5,65 @@ import { formatCurrency } from '../utils/calculations';
 import dayjs from 'dayjs';
 
 // Set up fonts for pdfMake
-pdfMake.vfs = pdfFonts;
+pdfMake.vfs = pdfFonts.pdfMake.vfs;
+
+// Define font families
+pdfMake.fonts = {
+  Roboto: {
+    normal: 'Roboto-Regular.ttf',
+    bold: 'Roboto-Medium.ttf',
+    italics: 'Roboto-Italic.ttf',
+    bolditalics: 'Roboto-MediumItalic.ttf'
+  }
+};
 
 export class PDFService {
   static generateInvoicePDF(invoice: Invoice): void {
-    const documentDefinition = {
+    const documentDefinition = this.getDocumentDefinition(invoice);
+
+    try {
+      // Generate and download the PDF
+      const pdfDoc = pdfMake.createPdf(documentDefinition);
+      pdfDoc.download(`Invoice-${invoice.invoiceNumber}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  }
+
+  static previewInvoicePDF(invoice: Invoice): void {
+    const documentDefinition = this.getDocumentDefinition(invoice);
+    
+    try {
+      const pdfDoc = pdfMake.createPdf(documentDefinition);
+      
+      // Try to open the PDF in a new window
+      try {
+        pdfDoc.open();
+      } catch (popupError) {
+        console.warn('PDF preview blocked by browser:', popupError);
+        
+        // Fallback: offer to download instead
+        const userChoice = confirm(
+          'PDF preview was blocked by your browser. Would you like to download the PDF instead?'
+        );
+        
+        if (userChoice) {
+          pdfDoc.download(`Invoice-${invoice.invoiceNumber}-Preview.pdf`);
+        } else {
+          alert(
+            'To preview PDFs, please allow pop-ups for this site in your browser settings, then try again.'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error previewing PDF:', error);
+      alert('Error previewing PDF. Please try again.');
+    }
+  }
+
+  private static getDocumentDefinition(invoice: Invoice) {
+    return {
       content: [
         // Header with Invoice Title and Number
         {
@@ -283,7 +337,7 @@ export class PDFService {
       },
 
       defaultStyle: {
-        font: 'Helvetica'
+        font: 'Roboto'
       },
 
       pageMargins: [40, 60, 40, 60],
@@ -295,35 +349,6 @@ export class PDFService {
         creator: 'InvoicePro',
         producer: 'InvoicePro'
       }
-    };
-
-    try {
-      // Generate and download the PDF
-      const pdfDoc = pdfMake.createPdf(documentDefinition);
-      pdfDoc.download(`Invoice-${invoice.invoiceNumber}.pdf`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
-    }
-  }
-
-  static previewInvoicePDF(invoice: Invoice): void {
-    const documentDefinition = this.getDocumentDefinition(invoice);
-    
-    try {
-      const pdfDoc = pdfMake.createPdf(documentDefinition);
-      pdfDoc.open();
-    } catch (error) {
-      console.error('Error previewing PDF:', error);
-      alert('Error previewing PDF. Please try again.');
-    }
-  }
-
-  private static getDocumentDefinition(invoice: Invoice) {
-    // Same document definition as above - extracted for reuse
-    // This would contain the same structure as in generateInvoicePDF
-    return {
-      // ... same content as above
     };
   }
 }
