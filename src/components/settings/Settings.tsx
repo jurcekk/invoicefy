@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { FreelancerInfo } from '../../types';
-import { Save, User } from 'lucide-react';
+import { Save, User, AlertCircle, Loader } from 'lucide-react';
 
 export const Settings: React.FC = () => {
-  const { freelancer, setFreelancer } = useStore();
+  const { 
+    freelancer, 
+    setFreelancer, 
+    isLoading, 
+    error, 
+    clearError 
+  } = useStore();
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -12,6 +19,8 @@ export const Settings: React.FC = () => {
     phone: '',
     website: '',
   });
+
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (freelancer) {
@@ -25,11 +34,16 @@ export const Settings: React.FC = () => {
     }
   }, [freelancer]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Clear errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const freelancerData: FreelancerInfo = {
-      id: freelancer?.id || `freelancer_${Date.now()}`,
+      id: freelancer?.id || '',
       name: formData.name,
       email: formData.email,
       address: formData.address,
@@ -37,12 +51,25 @@ export const Settings: React.FC = () => {
       website: formData.website || undefined,
     };
 
-    setFreelancer(freelancerData);
-    alert('Settings saved successfully!');
+    await setFreelancer(freelancerData);
+    
+    // Show success message if no error
+    if (!error) {
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }
   };
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData({ ...formData, [field]: value });
+    // Clear error when user starts typing
+    if (error) {
+      clearError();
+    }
+    // Clear success message when user starts editing
+    if (showSuccess) {
+      setShowSuccess(false);
+    }
   };
 
   return (
@@ -59,6 +86,32 @@ export const Settings: React.FC = () => {
             This information will appear on your invoices
           </p>
         </div>
+
+        {/* Success Message */}
+        {showSuccess && (
+          <div className="mx-6 mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center">
+              <div className="w-5 h-5 text-green-600 mr-2">✓</div>
+              <p className="text-green-800">Settings saved successfully!</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+              <p className="text-red-800">{error}</p>
+              <button
+                onClick={clearError}
+                className="ml-auto text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -131,10 +184,20 @@ export const Settings: React.FC = () => {
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+              disabled={isLoading}
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Save Settings
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Settings
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { Save, Plus } from 'lucide-react';
+import { Save, Plus, AlertCircle } from 'lucide-react';
 
 interface ClientFormProps {
   onSave?: () => void;
 }
 
 export const ClientForm: React.FC<ClientFormProps> = ({ onSave }) => {
-  const { addClient } = useStore();
+  const { 
+    addClient, 
+    isLoadingClients, 
+    clientError, 
+    clearClientError 
+  } = useStore();
+  
   const [formData, setFormData] = useState({
     companyName: '',
     contactName: '',
@@ -16,10 +22,10 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onSave }) => {
     phone: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    addClient({
+    await addClient({
       companyName: formData.companyName,
       contactName: formData.contactName || undefined,
       email: formData.email,
@@ -27,20 +33,27 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onSave }) => {
       phone: formData.phone || undefined,
     });
 
-    // Reset form
-    setFormData({
-      companyName: '',
-      contactName: '',
-      email: '',
-      address: '',
-      phone: '',
-    });
+    // Check if there was an error
+    if (!clientError) {
+      // Reset form on success
+      setFormData({
+        companyName: '',
+        contactName: '',
+        email: '',
+        address: '',
+        phone: '',
+      });
 
-    onSave?.();
+      onSave?.();
+    }
   };
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData({ ...formData, [field]: value });
+    // Clear error when user starts typing
+    if (clientError) {
+      clearClientError();
+    }
   };
 
   return (
@@ -48,6 +61,22 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onSave }) => {
       <div className="px-6 py-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Add New Client</h3>
       </div>
+
+      {/* Error Message */}
+      {clientError && (
+        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <p className="text-red-800">{clientError}</p>
+            <button
+              onClick={clearClientError}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -117,10 +146,20 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onSave }) => {
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+            disabled={isLoadingClients}
+            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Client
+            {isLoadingClients ? (
+              <>
+                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Adding...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Client
+              </>
+            )}
           </button>
         </div>
       </form>
