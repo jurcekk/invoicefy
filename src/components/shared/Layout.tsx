@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useStore } from '../../store/useStore';
-import { FileText, Users, Settings, Download, Upload } from 'lucide-react';
+import { useAuth } from '../auth/AuthProvider';
+import { FileText, Users, Settings, Download, Upload, LogOut } from 'lucide-react';
 import { storageService } from '../../services/storage';
 
 interface LayoutProps {
@@ -15,16 +16,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     initializeApp,
     isInitialized 
   } = useStore();
+  
+  const { user, signOut } = useAuth();
 
   // Load data when freelancer is set and app is initialized
   useEffect(() => {
-    if (freelancer && isInitialized) {
+    if (freelancer && isInitialized && user) {
       // Load clients and invoices for the current freelancer
       const store = useStore.getState();
       store.loadClients(freelancer.id);
       store.loadInvoices(freelancer.id);
     }
-  }, [freelancer, isInitialized]);
+  }, [freelancer, isInitialized, user]);
 
   const tabs = [
     { id: 'invoices' as const, label: 'Invoices', icon: FileText },
@@ -66,6 +69,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     input.click();
   };
 
+  const handleSignOut = async () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      await signOut();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header */}
@@ -85,6 +94,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             
             <div className="flex items-center space-x-2">
+              {user && (
+                <span className="text-sm text-gray-600 mr-4">{user.email}</span>
+              )}
+              
               <button
                 onClick={handleExport}
                 className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
@@ -98,6 +111,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               >
                 <Upload className="w-4 h-4 mr-1.5" />
                 Import
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
+              >
+                <LogOut className="w-4 h-4 mr-1.5" />
+                Sign Out
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { getSession } from './authService';
 import type { Database } from '../lib/database.types';
 
 // Type definitions for better TypeScript support
@@ -25,6 +26,17 @@ export async function createClient(clientData: {
   phone?: string;
 }): Promise<ServiceResponse<ClientRow>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format for freelancer_id
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(clientData.freelancer_id)) {
@@ -67,6 +79,7 @@ export async function createClient(clientData: {
         contact_name: clientData.contact_name?.trim() || null,
         address: clientData.address?.trim() || null,
         phone: clientData.phone?.trim() || null,
+        user_id: userId,
       })
       .select()
       .single();
@@ -115,6 +128,17 @@ export async function createClient(clientData: {
  */
 export async function getClientsForFreelancer(freelancer_id: string): Promise<ServiceResponse<ClientRow[]>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(freelancer_id)) {
@@ -128,6 +152,7 @@ export async function getClientsForFreelancer(freelancer_id: string): Promise<Se
       .from('clients')
       .select('*')
       .eq('freelancer_id', freelancer_id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -158,6 +183,17 @@ export async function getClientsForFreelancer(freelancer_id: string): Promise<Se
  */
 export async function getClientById(id: string): Promise<ServiceResponse<ClientRow>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
@@ -171,6 +207,7 @@ export async function getClientById(id: string): Promise<ServiceResponse<ClientR
       .from('clients')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -210,9 +247,20 @@ export async function getClientById(id: string): Promise<ServiceResponse<ClientR
  */
 export async function updateClient(
   id: string,
-  updates: Partial<Omit<ClientInsert, 'id' | 'created_at' | 'freelancer_id'>>
+  updates: Partial<Omit<ClientInsert, 'id' | 'created_at' | 'freelancer_id' | 'user_id'>>
 ): Promise<ServiceResponse<ClientRow>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
@@ -252,6 +300,7 @@ export async function updateClient(
       .from('clients')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -298,6 +347,17 @@ export async function updateClient(
  */
 export async function deleteClient(id: string): Promise<ServiceResponse<boolean>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
@@ -310,7 +370,8 @@ export async function deleteClient(id: string): Promise<ServiceResponse<boolean>
     const { error } = await supabase
       .from('clients')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error deleting client:', error);
@@ -340,6 +401,17 @@ export async function deleteClient(id: string): Promise<ServiceResponse<boolean>
  */
 export async function getClientsWithFreelancer(freelancer_id: string): Promise<ServiceResponse<(ClientRow & { freelancer: any })[]>> {
   try {
+    // Get current user session
+    const sessionResult = await getSession();
+    if (!sessionResult || !sessionResult.data) {
+      return {
+        data: null,
+        error: 'Authentication required'
+      };
+    }
+
+    const userId = sessionResult.data.user.id;
+
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(freelancer_id)) {
@@ -356,6 +428,7 @@ export async function getClientsWithFreelancer(freelancer_id: string): Promise<S
         freelancer:freelancers(*)
       `)
       .eq('freelancer_id', freelancer_id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {

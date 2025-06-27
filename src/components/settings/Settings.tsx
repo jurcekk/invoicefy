@@ -21,16 +21,29 @@ export const Settings: React.FC = () => {
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(true);
 
+  // Load freelancer data into form when component mounts or freelancer changes
   useEffect(() => {
     if (freelancer) {
       setFormData({
-        name: freelancer.name,
-        email: freelancer.email,
-        address: freelancer.address,
+        name: freelancer.name || '',
+        email: freelancer.email || '',
+        address: freelancer.address || '',
         phone: freelancer.phone || '',
         website: freelancer.website || '',
       });
+      setIsFormLoading(false);
+    } else {
+      // If no freelancer data, still show empty form
+      setFormData({
+        name: '',
+        email: '',
+        address: '',
+        phone: '',
+        website: '',
+      });
+      setIsFormLoading(false);
     }
   }, [freelancer]);
 
@@ -71,6 +84,19 @@ export const Settings: React.FC = () => {
       setShowSuccess(false);
     }
   };
+
+  // Show loading state while form data is being loaded
+  if (isFormLoading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          <Loader className="w-8 h-8 text-blue-600 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -113,6 +139,18 @@ export const Settings: React.FC = () => {
           </div>
         )}
 
+        {/* Profile Status */}
+        {!freelancer && (
+          <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center">
+              <User className="w-5 h-5 text-blue-600 mr-2" />
+              <p className="text-blue-800">
+                Complete your profile to start creating invoices
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -124,6 +162,7 @@ export const Settings: React.FC = () => {
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Enter your full name"
                 required
               />
             </div>
@@ -136,6 +175,7 @@ export const Settings: React.FC = () => {
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Enter your email address"
                 required
               />
             </div>
@@ -165,6 +205,7 @@ export const Settings: React.FC = () => {
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Enter your phone number"
               />
             </div>
             <div>
@@ -195,13 +236,47 @@ export const Settings: React.FC = () => {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save Settings
+                  {freelancer ? 'Update Profile' : 'Create Profile'}
                 </>
               )}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Profile Preview */}
+      {freelancer && (
+        <div className="bg-white rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Profile Preview</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              This is how your information will appear on invoices
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-2">{freelancer.name}</h4>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p>{freelancer.email}</p>
+                <p className="whitespace-pre-line">{freelancer.address}</p>
+                {freelancer.phone && <p>{freelancer.phone}</p>}
+                {freelancer.website && (
+                  <p>
+                    <a 
+                      href={freelancer.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      {freelancer.website}
+                    </a>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
