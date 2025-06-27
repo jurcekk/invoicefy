@@ -74,23 +74,39 @@ export async function getNextInvoiceNumber(freelancer_id: string): Promise<Servi
       };
     }
 
-    // Get count of existing invoices for this freelancer
-    const { count, error } = await supabase
+    // Get all existing invoice numbers for this freelancer to find the highest number
+    const { data: existingInvoices, error } = await supabase
       .from('invoices')
-      .select('*', { count: 'exact', head: true })
+      .select('invoice_number')
       .eq('freelancer_id', freelancer_id)
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error counting invoices:', error);
+      console.error('Error fetching existing invoices:', error);
       return {
         data: null,
-        error: error.message || 'Failed to count existing invoices'
+        error: error.message || 'Failed to fetch existing invoices'
       };
     }
 
-    // Generate next invoice number (count + 1, padded to 3 digits)
-    const nextNumber = (count || 0) + 1;
+    // Find the highest invoice number
+    let highestNumber = 0;
+    
+    if (existingInvoices && existingInvoices.length > 0) {
+      for (const invoice of existingInvoices) {
+        // Extract numeric part from invoice number (assuming format INV-XXX)
+        const match = invoice.invoice_number.match(/INV-(\d+)/);
+        if (match) {
+          const number = parseInt(match[1], 10);
+          if (number > highestNumber) {
+            highestNumber = number;
+          }
+        }
+      }
+    }
+
+    // Generate next invoice number (highest + 1, padded to 3 digits)
+    const nextNumber = highestNumber + 1;
     const invoiceNumber = `INV-${nextNumber.toString().padStart(3, '0')}`;
 
     return {
