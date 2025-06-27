@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { Client } from '../../types';
-import { Building2, Mail, Phone, MapPin, Edit, Trash2, Search } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Edit, Trash2, Search, AlertCircle, Loader } from 'lucide-react';
 import dayjs from 'dayjs';
 
 export const ClientList: React.FC = () => {
-  const { clients, updateClient, deleteClient } = useStore();
+  const { 
+    clients, 
+    updateClient, 
+    deleteClient, 
+    isLoadingClients, 
+    clientError, 
+    clearClientError 
+  } = useStore();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [editForm, setEditForm] = useState({
@@ -15,6 +23,11 @@ export const ClientList: React.FC = () => {
     address: '',
     phone: '',
   });
+
+  // Clear errors when component mounts
+  useEffect(() => {
+    clearClientError();
+  }, [clearClientError]);
 
   const filteredClients = clients.filter(client =>
     client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -31,18 +44,23 @@ export const ClientList: React.FC = () => {
       address: client.address || '',
       phone: client.phone || '',
     });
+    clearClientError();
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingClient) {
-      updateClient(editingClient.id, {
+      await updateClient(editingClient.id, {
         companyName: editForm.companyName,
         contactName: editForm.contactName || undefined,
         email: editForm.email,
         address: editForm.address || undefined,
         phone: editForm.phone || undefined,
       });
-      setEditingClient(null);
+      
+      // Only close edit mode if there was no error
+      if (!clientError) {
+        setEditingClient(null);
+      }
     }
   };
 
@@ -55,13 +73,28 @@ export const ClientList: React.FC = () => {
       address: '',
       phone: '',
     });
+    clearClientError();
   };
 
-  const handleDelete = (clientId: string) => {
+  const handleDelete = async (clientId: string) => {
     if (window.confirm('Are you sure you want to delete this client?')) {
-      deleteClient(clientId);
+      await deleteClient(clientId);
     }
   };
+
+  if (isLoadingClients) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-2xl font-bold text-gray-900">Clients</h2>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          <Loader className="w-8 h-8 text-blue-600 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600">Loading clients...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -79,6 +112,22 @@ export const ClientList: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Error Message */}
+      {clientError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <p className="text-red-800">{clientError}</p>
+            <button
+              onClick={clearClientError}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Client Cards */}
       {filteredClients.length === 0 ? (
@@ -168,15 +217,24 @@ export const ClientList: React.FC = () => {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={handleCancelEdit}
-                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                        disabled={isLoadingClients}
+                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200 disabled:opacity-50"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSaveEdit}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                        disabled={isLoadingClients}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
                       >
-                        Save Changes
+                        {isLoadingClients ? (
+                          <>
+                            <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Changes'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -195,14 +253,16 @@ export const ClientList: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(client)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          disabled={isLoadingClients}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
                           title="Edit Client"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(client.id)}
-                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                          disabled={isLoadingClients}
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
                           title="Delete Client"
                         >
                           <Trash2 className="w-4 h-4" />

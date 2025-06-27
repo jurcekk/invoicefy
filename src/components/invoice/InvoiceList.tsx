@@ -1,15 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { Invoice } from '../../types';
 import { formatCurrency } from '../../utils/calculations';
 import { PDFService } from '../../services/pdfService';
-import { FileText, Download, Eye, Edit, Trash2, Search } from 'lucide-react';
+import { FileText, Download, Edit, Trash2, Search, AlertCircle, Loader } from 'lucide-react';
 import dayjs from 'dayjs';
 
 export const InvoiceList: React.FC = () => {
-  const { invoices, deleteInvoice, updateInvoice } = useStore();
+  const { 
+    invoices, 
+    deleteInvoice, 
+    updateInvoice, 
+    isLoadingInvoices, 
+    invoiceError, 
+    clearInvoiceError 
+  } = useStore();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Clear errors when component mounts
+  useEffect(() => {
+    clearInvoiceError();
+  }, [clearInvoiceError]);
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = 
@@ -25,13 +38,13 @@ export const InvoiceList: React.FC = () => {
     PDFService.generateInvoicePDF(invoice);
   };
 
-  const handleStatusChange = (invoiceId: string, newStatus: Invoice['status']) => {
-    updateInvoice(invoiceId, { status: newStatus });
+  const handleStatusChange = async (invoiceId: string, newStatus: Invoice['status']) => {
+    await updateInvoice(invoiceId, { status: newStatus });
   };
 
-  const handleDelete = (invoiceId: string) => {
+  const handleDelete = async (invoiceId: string) => {
     if (window.confirm('Are you sure you want to delete this invoice?')) {
-      deleteInvoice(invoiceId);
+      await deleteInvoice(invoiceId);
     }
   };
 
@@ -53,6 +66,20 @@ export const InvoiceList: React.FC = () => {
   const formatStatus = (status: Invoice['status']) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
+
+  if (isLoadingInvoices) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-2xl font-bold text-gray-900">Invoices</h2>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          <Loader className="w-8 h-8 text-blue-600 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600">Loading invoices...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -83,6 +110,22 @@ export const InvoiceList: React.FC = () => {
           </select>
         </div>
       </div>
+
+      {/* Error Message */}
+      {invoiceError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <p className="text-red-800">{invoiceError}</p>
+            <button
+              onClick={clearInvoiceError}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Cards */}
       {filteredInvoices.length === 0 ? (
@@ -136,7 +179,8 @@ export const InvoiceList: React.FC = () => {
                         <select
                           value={invoice.status}
                           onChange={(e) => handleStatusChange(invoice.id, e.target.value as Invoice['status'])}
-                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          disabled={isLoadingInvoices}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:opacity-50"
                         >
                           <option value="draft">Draft</option>
                           <option value="sent">Sent</option>
@@ -154,7 +198,8 @@ export const InvoiceList: React.FC = () => {
                         
                         <button
                           onClick={() => handleDelete(invoice.id)}
-                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                          disabled={isLoadingInvoices}
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
                           title="Delete Invoice"
                         >
                           <Trash2 className="w-4 h-4" />

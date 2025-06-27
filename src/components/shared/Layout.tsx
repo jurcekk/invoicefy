@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { FileText, Users, Settings, Download, Upload } from 'lucide-react';
 import { storageService } from '../../services/storage';
@@ -8,7 +8,23 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { activeTab, setActiveTab, freelancer } = useStore();
+  const { 
+    activeTab, 
+    setActiveTab, 
+    freelancer, 
+    initializeApp,
+    isInitialized 
+  } = useStore();
+
+  // Load data when freelancer is set and app is initialized
+  useEffect(() => {
+    if (freelancer && isInitialized) {
+      // Load clients and invoices for the current freelancer
+      const store = useStore.getState();
+      store.loadClients(freelancer.id);
+      store.loadInvoices(freelancer.id);
+    }
+  }, [freelancer, isInitialized]);
 
   const tabs = [
     { id: 'invoices' as const, label: 'Invoices', icon: FileText },
@@ -38,7 +54,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         reader.onload = (e) => {
           const data = e.target?.result as string;
           if (storageService.importData(data)) {
-            window.location.reload(); // Refresh to load new data
+            // Reinitialize the app after import
+            initializeApp();
           } else {
             alert('Error importing data. Please check the file format.');
           }
